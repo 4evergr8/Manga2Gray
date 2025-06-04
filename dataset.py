@@ -10,8 +10,6 @@ def xdog(img_gray, sigma=0.8, k=3, gamma=1, epsilon=0.001, phi=10.0):
     g2 = cv2.GaussianBlur(img, (0, 0), sigma * k)
     D = g1 - gamma * g2
 
-    # XDoG with tanh
-    xdog = np.ones_like(D)
     xdog = 1.0 + np.tanh(phi * (D - epsilon))
     xdog = (xdog * 255).clip(0, 255).astype(np.uint8)
 
@@ -25,8 +23,11 @@ def process_and_save(img_path, save_dir):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         xdog_img = xdog(gray)
 
-        # 拼接灰度图 + xdog图
-        combined = np.concatenate((gray, xdog_img), axis=1)
+        # 将单通道的 xdog 图转换为 BGR，以便与原图拼接
+        xdog_bgr = cv2.cvtColor(xdog_img, cv2.COLOR_GRAY2BGR)
+
+        # 拼接原图 + xdog图
+        combined = np.concatenate((img, xdog_bgr), axis=1)
 
         # 确保输出文件夹存在
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -38,7 +39,7 @@ def process_and_save(img_path, save_dir):
     except Exception as e:
         print(f"跳过损坏或错误图像: {img_path.name}, 错误: {e}")
         try:
-            img_path.unlink()  # 删除出错的图像
+            img_path.unlink()
         except:
             pass
 
@@ -54,7 +55,6 @@ def process_all():
                 continue
             process_and_save(img_path, save_root)
 
-        # 删除原始 train 或 val 文件夹
         if src_root.exists():
             shutil.rmtree(src_root, ignore_errors=True)
 
